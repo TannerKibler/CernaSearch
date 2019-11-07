@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="x_236565_cerna_sea_cerna_search_config">
+    <x_236565_cerna_sea_cerna_search_config action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <common_suffixes/>
+        <comparator_penalty/>
+        <display_character_limit>100</display_character_limit>
+        <filter table="kb_knowledge">active=true^workflow_state=published^valid_to&gt;=javascript:gs.beginningOfToday()^EQ<item endquery="false" field="active" goto="false" newquery="false" operator="=" or="false" value="true"/>
+            <item endquery="false" field="workflow_state" goto="false" newquery="false" operator="=" or="false" value="published"/>
+            <item endquery="false" field="valid_to" goto="false" newquery="false" operator="&gt;=" or="false" value="javascript:gs.beginningOfToday()"/>
+            <item endquery="true" field="" goto="false" newquery="false" operator="=" or="false" value=""/>
+        </filter>
+        <inclusive_search_fields>text</inclusive_search_fields>
+        <length_penalty/>
+        <match_field_override>short_description</match_field_override>
+        <maximum_length_mismatch/>
+        <minimum_allowed_match>30</minimum_allowed_match>
+        <minimum_result_before_retry/>
+        <run_script>true</run_script>
+        <script><![CDATA[(function(gr, currentMatchRating) {
+	try {
+		var rating = parseFloat(gr.rating.toString()) || 1;
+		var additionalPoints = 0;
+		if (gr.sys_view_count.toString() == '0') {
+			additionalPoints = 0;
+		}
+		else {
+			if (gr.use_count.toString() == '0')
+				additionalPoints = parseInt(gr.sys_view_count.toString(), 10)*(1/10);  // Just views are a .1 boost per view
+			else
+				additionalPoints = parseInt(gr.use_count.toString(), 10)*(2); // usage counts are 2 point per view
+		}
+
+		gs.info('Got GR: ' + gr.sys_id.toString() + ', current match: ' + currentMatchRating + ', got rating: ' + rating + ', current multi: ' + additionalPoints);
+		
+		if (additionalPoints > 0)
+			newMatch = currentMatchRating + additionalPoints;
+		else
+			newMatch = currentMatchRating;
+		
+		gs.info('Got GR: ' + gr.sys_id.toString() + ', returning: ' + newMatch);
+	}
+	catch(ex) {
+		gs.error('Error in search config function for KB_Knowledge: \n\n' + ex);
+	}
+
+})(gr, currentMatchRating);]]></script>
+        <search_fields/>
+        <synonym_match_ratio/>
+        <sys_class_name>x_236565_cerna_sea_cerna_search_config</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-16 14:24:00</sys_created_on>
+        <sys_id>fbd44a59db200010ce90a455ca961953</sys_id>
+        <sys_mod_count>19</sys_mod_count>
+        <sys_name>kb_knowledge</sys_name>
+        <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+        <sys_update_name>x_236565_cerna_sea_cerna_search_config_fbd44a59db200010ce90a455ca961953</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-10-21 17:08:55</sys_updated_on>
+        <target_table>kb_knowledge</target_table>
+    </x_236565_cerna_sea_cerna_search_config>
+</record_update>

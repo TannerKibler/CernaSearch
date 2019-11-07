@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="update_synch=true" extends="sys_metadata" label="Cerna Search Config" max_length="40" name="x_236565_cerna_sea_cerna_search_config" type="collection">
+        <element label="Active" max_length="40" name="active" type="boolean"/>
+        <element label="Common Suffixes" max_length="400" name="common_suffixes" type="string"/>
+        <element label="Comparator Penalty" max_length="40" name="comparator_penalty" type="integer"/>
+        <element label="Display Character Limit" max_length="40" name="display_character_limit" type="integer"/>
+        <element dependent="target_table" dependent_on_field="target_table" label="Filter" max_length="4000" name="filter" type="conditions" use_dependent_field="true"/>
+        <element label="Inclusive Search Fields" max_length="4000" name="inclusive_search_fields" type="string"/>
+        <element label="Length Penalty" max_length="40" name="length_penalty" type="integer"/>
+        <element label="Match Field Override" max_length="100" name="match_field_override" type="string"/>
+        <element label="Maximum Length Mismatch" max_length="40" name="maximum_length_mismatch" type="integer"/>
+        <element label="Minimum Allowed Match" max_length="40" name="minimum_allowed_match" type="integer"/>
+        <element label="Minimum Result Before Retry" max_length="40" name="minimum_result_before_retry" type="integer"/>
+        <element label="Run Script" max_length="40" name="run_script" type="boolean"/>
+        <element label="Script" max_length="8000" name="script" type="script"/>
+        <element label="Search Fields" max_length="400" name="search_fields" type="string"/>
+        <element label="Synonym Match Ratio" max_length="20" name="synonym_match_ratio" type="decimal"/>
+        <element attributes="allow_public" display="true" label="Target Table" max_length="80" name="target_table" type="table_name"/>
+    </element>
+</database>

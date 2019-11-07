@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_documentation element="minimum_result_before_retry" label="Minimum Result Before Retry" language="en" table="x_236565_cerna_sea_cerna_search_config">
+        <sys_documentation action="INSERT_OR_UPDATE">
+            <element>minimum_result_before_retry</element>
+            <help/>
+            <hint/>
+            <label>Minimum Result Before Retry</label>
+            <language>en</language>
+            <name>x_236565_cerna_sea_cerna_search_config</name>
+            <plural>Minimum Result Before Retries</plural>
+            <sys_class_name>sys_documentation</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2019-10-11 04:30:31</sys_created_on>
+            <sys_id>8b5d0227db580010ce90a455ca961959</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>Minimum Result Before Retry</sys_name>
+            <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+            <sys_update_name>sys_documentation_x_236565_cerna_sea_cerna_search_config_minimum_result_before_retry_en</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2019-10-11 04:30:31</sys_updated_on>
+            <url/>
+            <url_target/>
+        </sys_documentation>
+    </sys_documentation>
+</record_update>

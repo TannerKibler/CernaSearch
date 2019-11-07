@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[function($scope, $sce) {
+	/* widget controller */
+	var c = this;
+
+	$scope.search_text = '';
+	$scope.searchData = [];
+	$scope.historySys = '';
+	$scope.showUserBasedRecommendations = true;
+	$scope.userSelections = [];
+	$scope.pastDepartmentSelections = []
+
+	$scope.fireClickEvent = function(ob) {
+		/*
+			TODO: figure out a way to allow callback to platform
+			TODO: handle client side actions
+		*/
+
+		if (!ob.clicked) {
+			c.server.get({'search_text': $scope.search_text, 'clicked_search': JSON.stringify(ob),
+										'action': 'selection', 'historySys': $scope.historySys}).then(function(results) {
+
+				if (results && results.data.success) {
+					ob.clicked = true;
+					if (sysIDDoesNotExistInArray($scope.userSelections, ob.sys_id))
+						$scope.userSelections.push(ob);
+					
+					if (sysIDDoesNotExistInArray($scope.pastDepartmentSelections, ob.sys_id))
+						$scope.pastDepartmentSelections.push(ob);
+				}
+			})
+		}
+	}
+
+	function sysIDDoesNotExistInArray(arr, sys) {
+		if (!arr || !sys)
+			return false;
+
+		for (var i = 0; i < arr.length; i++) {
+			if (arr[i].sys_id == sys)
+				return false;
+		}
+
+		return true;
+	}
+
+	$scope.highlight = function(text) {
+		if (!$scope.search_text) {
+			return $sce.trustAsHtml(text);
+		}
+		return $sce.trustAsHtml(text.replace(new RegExp($scope.search_text, 'gi'), '<span class="highlightedTextMatch">$&</span>'));
+	}
+
+	$scope.processSearchText = function() {
+		if ($scope.search_text && c.data.minimum_characters) {
+			if ($scope.search_text.length < c.data.minimum_characters)
+				return;
+		}
+
+		c.server.get({'search_text': $scope.search_text}).then(function(results) {
+			if (results && results.data) {
+				$scope.searchData = results.data.searchData;
+				$scope.historySys = results.data.searchHistory;
+				$scope.userSelections = results.data.pastSelections;
+				$scope.pastDepartmentSelections = results.data.pastDepartmentSelections;
+			}
+		})
+	}
+}]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.badge-primary {
+  background-color: #428bca;
+}
+
+.highlightedTextMatch {
+    background: yellow;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>cerna_search_list</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>Cerna Search List</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+  
+	var helper = new CernaSearch();
+	helper.initializeFromPortal(input, $sp);
+	
+	if (input) {
+		if (input.action) {
+			if (input.action == 'selection' && input.clicked_search && input.search_text && input.historySys) {
+				data.success = helper.markSelected(input.search_text, JSON.parse(input.clicked_search), input.historySys, gs.getUserID());
+			}
+		}
+		if (input.search_text) {
+			data.searchData = helper.searchTable(input.search_text);
+			data.searchHistory = helper.getSearchHistory();
+			data.pastSelections = helper.loadMyPastSearches(data.searchHistory, gs.getUserID());
+			data.pastDepartmentSelections = helper.loadPastSearchesForDepartment(data.searchHistory);
+		}
+	}
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-11 03:57:35</sys_created_on>
+        <sys_id>b4d58e6bdb180010ce90a455ca961908</sys_id>
+        <sys_mod_count>47</sys_mod_count>
+        <sys_name>Cerna Search List</sys_name>
+        <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+        <sys_update_name>sp_widget_b4d58e6bdb180010ce90a455ca961908</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-10-15 15:48:10</sys_updated_on>
+        <template><![CDATA[<div>
+  <div class="row">
+    <div ng-show="pastDepartmentSelections.length > 0 || userSelections.length > 0" class="col-xs-12 col-md-8">
+      <input type="text" class="form-control cerna_search_input"
+             ng-model="search_text"
+             ng-model-options="{debounce: 800}"
+             ng-change="processSearchText()"/>
+      <div class="list-group">
+        <a href="#" ng-click="fireClickEvent(searchResult)"  ng-repeat="searchResult in searchData" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+          {{searchResult.name}}: {{searchResult.valueLabel}} - <span ng-bind-html="highlight(searchResult.value)"></span>
+          <span class="badge badge-primary badge-pill">{{searchResult.match}}</span>
+        </a>
+      </div>
+    </div>
+    <div ng-show="pastDepartmentSelections.length > 0 || userSelections.length > 0" class="col-xs-12 col-md-4">
+      <div class="panel panel-primary" ng-show="userSelections.length > 0">
+        <div class="panel-heading">
+          <h3 class="display-3 panel-title">
+            Your Past Selections
+          </h3>
+        </div>
+        <div class="panel-body">
+          <div class="list-group">
+            <a href="#" ng-click="fireClickEvent(pastSearchSelection)"  ng-repeat="pastSearchSelection in userSelections" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+              {{pastSearchSelection.name}}: {{pastSearchSelection.valueLabel}} - <span ng-bind-html="highlight(pastSearchSelection.value)"></span>
+              <span class="badge badge-primary badge-pill">{{pastSearchSelection.match}}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="panel panel-primary" ng-show="pastDepartmentSelections.length > 0">
+        <div class="panel-heading">
+          <h3 class="display-3 panel-title">
+            Selections by your Department
+          </h3>
+        </div>
+        <div class="panel-body">
+          <div class="list-group">
+            <a href="#" ng-click="fireClickEvent(pastDepartmentSelection)"  ng-repeat="pastDepartmentSelection in pastDepartmentSelections" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+              {{pastDepartmentSelection.name}}: {{pastDepartmentSelection.valueLabel}} - <span ng-bind-html="highlight(pastDepartmentSelection.value)"></span>
+              <span class="badge badge-primary badge-pill">{{pastDepartmentSelection.match}}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div ng-show="pastDepartmentSelections.length == 0 && userSelections.length == 0" class="col-xs-12">
+      <input type="text" class="form-control cerna_search_input"
+             ng-model="search_text"
+             ng-model-options="{debounce: 800}"
+             ng-change="processSearchText()"/>
+      <div class="list-group">
+        <a href="#" ng-click="fireClickEvent(searchResult)"  ng-repeat="searchResult in searchData" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+          {{searchResult.name}}: {{searchResult.valueLabel}} - {{searchResult.value}}
+          <span class="badge badge-primary badge-pill">{{searchResult.match}}</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>]]></template>
+    </sp_widget>
+</record_update>

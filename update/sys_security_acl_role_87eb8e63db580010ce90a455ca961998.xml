@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_security_acl_role">
+    <sys_security_acl_role action="INSERT_OR_UPDATE">
+        <sys_class_name>sys_security_acl_role</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-11 04:24:13</sys_created_on>
+        <sys_id>87eb8e63db580010ce90a455ca961998</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>x_236565_cerna_sea_cerna_search_config.x_236565_cerna_sea.cerna_search_config_user</sys_name>
+        <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+        <sys_security_acl display_value="x_236565_cerna_sea_cerna_search_config">8feb8e63db580010ce90a455ca961993</sys_security_acl>
+        <sys_update_name>sys_security_acl_role_87eb8e63db580010ce90a455ca961998</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-10-11 04:24:13</sys_updated_on>
+        <sys_user_role display_value="x_236565_cerna_sea.cerna_search_config_user" name="x_236565_cerna_sea.cerna_search_config_user">32eb4623db580010ce90a455ca961981</sys_user_role>
+        <transaction_id/>
+    </sys_security_acl_role>
+</record_update>

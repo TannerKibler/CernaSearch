@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element label="Cerna Search History" max_length="40" name="x_236565_cerna_sea_cerna_search_history" type="collection">
+        <element label="Searched String" max_length="400" name="searched_string" type="string"/>
+        <element label="Search Config" max_length="32" name="search_config" reference="x_236565_cerna_sea_cerna_search_config" type="reference"/>
+        <index name="index">
+            <element name="search_config"/>
+        </index>
+    </element>
+</database>

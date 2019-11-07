@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_ui_form_sections form_id="fff1c295db200010ce90a455ca96199d" sys_domain="global" table="x_236565_cerna_sea_cerna_search_config" version="3">
+        <sys_ui_form_section action="INSERT_OR_UPDATE">
+            <position>0</position>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2019-10-16 14:10:13</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_id>fbf1c295db200010ce90a455ca96199e</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_overrides/>
+            <sys_ui_form display_value="x_236565_cerna_sea_cerna_search_config" name="x_236565_cerna_sea_cerna_search_config" sys_domain="global" view="Default view">fff1c295db200010ce90a455ca96199d</sys_ui_form>
+            <sys_ui_section caption="NULL" display_value="" name="x_236565_cerna_sea_cerna_search_config" sys_domain="global" view="Default view">0b9e82a7db580010ce90a455ca961918</sys_ui_section>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2019-10-16 14:10:13</sys_updated_on>
+        </sys_ui_form_section>
+        <sys_ui_form_section action="INSERT_OR_UPDATE">
+            <position>1</position>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2019-10-16 14:10:13</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_id>0802c295db200010ce90a455ca9619a0</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_overrides/>
+            <sys_ui_form display_value="x_236565_cerna_sea_cerna_search_config" name="x_236565_cerna_sea_cerna_search_config" sys_domain="global" view="Default view">fff1c295db200010ce90a455ca96199d</sys_ui_form>
+            <sys_ui_section caption="Exclusive Search" display_value="Exclusive Search" name="x_236565_cerna_sea_cerna_search_config" sys_domain="global" view="Default view">0402c295db200010ce90a455ca96199f</sys_ui_section>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2019-10-16 14:10:13</sys_updated_on>
+        </sys_ui_form_section>
+        <sys_ui_form_section action="INSERT_OR_UPDATE">
+            <position>2</position>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2019-10-16 14:14:22</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_id>ecf282d5db200010ce90a455ca961956</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_overrides/>
+            <sys_ui_form display_value="x_236565_cerna_sea_cerna_search_config" name="x_236565_cerna_sea_cerna_search_config" sys_domain="global" view="Default view">fff1c295db200010ce90a455ca96199d</sys_ui_form>
+            <sys_ui_section caption="Inclusive Search" display_value="Inclusive Search" name="x_236565_cerna_sea_cerna_search_config" sys_domain="global" view="Default view">20f282d5db200010ce90a455ca961955</sys_ui_section>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2019-10-16 14:14:22</sys_updated_on>
+        </sys_ui_form_section>
+        <sys_ui_form action="INSERT_OR_UPDATE">
+            <name>x_236565_cerna_sea_cerna_search_config</name>
+            <roles/>
+            <sys_class_name>sys_ui_form</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2019-10-16 14:10:13</sys_created_on>
+            <sys_domain>global</sys_domain>
+            <sys_domain_path>/</sys_domain_path>
+            <sys_id>fff1c295db200010ce90a455ca96199d</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>x_236565_cerna_sea_cerna_search_config</sys_name>
+            <sys_overrides/>
+            <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+            <sys_update_name>sys_ui_form_sections_fff1c295db200010ce90a455ca96199d</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2019-10-16 14:10:13</sys_updated_on>
+            <sys_user/>
+            <view display_value="Default view" name="NULL">Default view</view>
+            <view_name/>
+        </sys_ui_form>
+    </sys_ui_form_sections>
+</record_update>

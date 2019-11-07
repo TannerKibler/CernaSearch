@@ -1,0 +1,822 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_236565_cerna_sea.CernaSearch</api_name>
+        <client_callable>false</client_callable>
+        <description/>
+        <name>CernaSearch</name>
+        <script><![CDATA[var CernaSearch = Class.create();
+CernaSearch.prototype = {
+	initialize: function(table, filter, field) {
+		this._searchConfigTable = 'x_236565_cerna_sea_cerna_search_config';
+		this._pastSearchTable = 'x_236565_cerna_sea_cerna_search_history';
+		this._pastSearchEntryTable = 'x_236565_cerna_sea_cerna_search_history_entry';
+		this._searchSynonymTable = 'x_236565_cerna_sea_cerna_search_synonyms';
+		this._debugSearchString = 'spam';
+	},
+
+	initializeFromPortal: function(input, $sp) {
+		if (!input && !$sp)
+			return false;
+
+		var table = (input && input.search_table) ? input.search_table : $sp.getParameter('search_table');
+		if (!table)
+			return false;
+
+		var grSearchConfig = new GlideRecord(this._searchConfigTable);
+		grSearchConfig.addQuery('target_table', table);
+		grSearchConfig.addQuery('active', true);
+		grSearchConfig.query();
+
+		if (grSearchConfig.next()) {
+			this._table = table;
+			this._filter = grSearchConfig.filter.toString();
+			this._searchFields = grSearchConfig.search_fields.toString().split(',');
+			this._inclusiveSearchFields = grSearchConfig.inclusive_search_fields.toString().split(',');
+			this._commonSuffixes = grSearchConfig.common_suffixes.toString().split(',');
+			this._minimumMatchPercent = parseInt(grSearchConfig.minimum_allowed_match.toString(), 10);
+			this._comparatorPenalty = parseInt(grSearchConfig.comparator_penalty.toString(), 10);
+			this._lengthPenalty = parseInt(grSearchConfig.length_penalty.toString(), 10);
+			this._maximumLengthMismatch = parseInt(grSearchConfig.maximum_length_mismatch.toString(), 10);
+			this._minBeforeAdditionalPasses = parseInt(grSearchConfig.minimum_result_before_retry.toString(), 10);
+			this._searchConfig = grSearchConfig.sys_id.toString();
+			this._searchConfigGR = grSearchConfig;
+			this._displayCharLimit = parseInt(grSearchConfig.display_character_limit.toString()) || -1;
+			this._matchFieldOverride = grSearchConfig.match_field_override.toString();
+		}
+	},
+
+	searchLoadedData: function(searchString, loadedData, stopIfDirect, /* optional */ minimumMatchRating) {
+		if (!searchString || !loadedData)
+			return '';
+
+		if (!minimumMatchRating) {
+			if (this._minimumMatchPercent)
+				minimumMatchRating = this._minimumMatchPercent;
+			else
+				return '';
+		}
+
+		var iter = 0, cleanedReturn = [], loopOb = {};
+		for (iter; iter < loadedData.length; iter++) {
+			loopOb = loadedData[iter];
+			loopOb.match = this._compareStrings(loopOb.name, searchString);
+			if (loopOb.match == 100 && stopIfDirect)
+				return [loopOb];
+
+			if (loopOb.match >= minimumMatchRating)
+				cleanedReturn.push(loopOb);
+		}
+
+		cleanedReturn.sort(this._sortMatchOb);
+
+		return cleanedReturn;
+	},
+
+	_searchAlreadyOccured: function(searchString) {
+		if (!searchString)
+			return false;
+
+		var grSearchHistory = new GlideRecord(this._pastSearchTable);
+		grSearchHistory.addQuery('searched_string', searchString);
+		grSearchHistory.query();
+
+		if (grSearchHistory.next()) {
+			this._searchHistory = grSearchHistory.sys_id.toString();
+			return true;
+		}
+
+		return false;
+	},
+
+	_runScript: function(gr, grScriptVar, vars) {
+		var evaluator = new GlideScopedEvaluator();
+		evaluator.evaluateScript(gr, grScriptVar, vars);
+
+		return evaluator;
+	},
+
+	searchTable: function(searchString, /* optional */ minimumMatchRating, /* optional */ blacklistedWords) {
+		try {
+			if (!searchString)
+				return '';
+
+			if (!this._table) //|| (!this._searchFields && (!this._inclusiveSearchFields || this._searchConfigGR.run_script.toString() == 'true')))
+				return '';
+
+			if (!minimumMatchRating) {
+				if (this._minimumMatchPercent)
+					minimumMatchRating = this._minimumMatchPercent;
+				else
+					return '';
+			}
+
+			if (blacklistedWords && Array.isArray(blacklistedWords))
+				this._blacklistedWords = blacklistedWords;
+
+			if (!this._searchMatchObject)
+				this._searchMatchObject = []; // [{'name': name, 'match': match], {..}, ..]
+
+			if (this._searchAlreadyOccured(searchString)) {
+				return this.loadPastSearches();
+			}
+
+			this._loadSynonyms(searchString, gs.getUserID());
+
+			var grSearchTable = new GlideRecord(this._table), curMatch = 0, bestField = '', topMatch = 0, i = 0, scriptReturnMatch = 0;
+
+			if (this._filter)
+				grSearchTable.addEncodedQuery(this._filter);
+
+			grSearchTable.query();
+
+			while (grSearchTable.next()) {
+				curMatch = 0;
+				topMatch = 0;
+				for (i = 0; i < this._searchFields.length; i++) {
+					if (this._shouldCheckRow(grSearchTable, this._searchFields[i])) {
+						curMatch = this._compareStrings(grSearchTable[this._searchFields[i]].getDisplayValue(), searchString);
+						if (curMatch > topMatch) {
+							topMatch = curMatch;
+							bestField = this._searchFields[i];
+						}		
+					}
+				}
+
+				for (i = 0; i < this._inclusiveSearchFields.length; i++) {
+					if (this._shouldCheckRow(grSearchTable, this._inclusiveSearchFields[i])) {
+						curMatch = this._compareInclusiveStrings(grSearchTable[this._inclusiveSearchFields[i]].getDisplayValue(), searchString, grSearchTable.sys_id.toString());
+						var result = this._runScript(this._searchConfigGR, 'script', {'gr': grSearchTable, 'currentMatchRating': curMatch, 'newMatch': 0}), returnBool =  true;
+						scriptReturnMatch = result.getVariable('newMatch');
+						gs.info('Got return from Script: ' + scriptReturnMatch);
+						if (scriptReturnMatch > curMatch)
+							curMatch = scriptReturnMatch;
+
+						if (curMatch > topMatch) {
+							topMatch = curMatch;
+							bestField = this._inclusiveSearchFields[i];
+						}
+					}
+				}
+
+				if (topMatch >= minimumMatchRating && this._displayCharLimit == -1)
+					this._searchMatchObject.push({'name': grSearchTable.getDisplayValue(), 'value': (this._matchFieldOverride ? grSearchTable[this._matchFieldOverride].getDisplayValue() : grSearchTable[bestField].getDisplayValue()), 'sys_id': grSearchTable.sys_id.toString(), 'match': Math.ceil(topMatch), 'valueLabel': grSearchTable[bestField].getLabel()});
+				else if (topMatch >= minimumMatchRating) {
+					this._searchMatchObject.push({'name': grSearchTable.getDisplayValue(), 'value': (this._matchFieldOverride ? grSearchTable[this._matchFieldOverride].getDisplayValue() : grSearchTable[bestField].getDisplayValue()).substring(0, this._displayCharLimit), 'sys_id': grSearchTable.sys_id.toString(), 'match': Math.ceil(topMatch), 'valueLabel': grSearchTable[bestField].getLabel()});
+				}
+			}
+
+			this._searchMatchObject.sort(this._sortMatchOb);
+
+			this._insertIntoPastSearches(this._searchMatchObject, searchString);
+
+			return this._searchMatchObject;
+		}
+		catch(err) {
+			gs.error('Error logged in searchTable: \n\n' + err);
+		}
+	},
+
+	_addSynonym: function(synonym, userSys, /* optional */ searchString) {
+		if (!synonym || !userSys)
+			return false;
+
+
+		var grSynonyms = new GlideRecord(this._searchSynonymTable), splitterArr = [], toAdd = '';
+		if (searchString) {
+			grSynonyms.addQuery('synonyms', 'LIKE', searchString);
+			grSynonyms.addQuery('department', this._getDeptForUser(userSys));
+			grSynonyms.query();
+
+			while (grSynonyms.next()) {
+				splitterArr = grSynonyms.synonyms.toString().split(',');
+				splitterArr.push(synonym);
+				grSynonyms.synonyms = splitterArr.join(',');
+				grSynonyms.update();
+			}
+		}
+		else {
+			grSynonyms.initialize();
+			grSynonyms.synonyms = synonym;
+			grSynonyms.department = this._getDeptForUser(userSys);
+			grSynonyms.insert();
+		}
+	},
+
+	_loadSynonyms: function(searchString, userSys) {
+		if (!searchString || !userSys)
+			return false;
+
+		this._synonyms = [];
+		var grSynonyms = new GlideRecord(this._searchSynonymTable), splitterArr = [], toAdd = '';
+		grSynonyms.addEncodedQuery('synonymsLIKE' + searchString + '^department=' + this._getDeptForUser(userSys));
+		grSynonyms.query();
+
+		while (grSynonyms.next()) {
+			splitterArr = grSynonyms.synonyms.toString().split(',');
+			for (var i = 0; i < splitterArr.length; i++) {
+				toAdd = splitterArr[i].trim();
+				if (toAdd) {
+					if (this._synonyms.indexOf(toAdd) == -1)
+						this._synonyms.push(toAdd);
+				}
+			}
+		}
+	},
+
+	_cleanStringForInclusiveCompare: function(str1) {
+		if (!str1)
+			return false;
+
+		str1 = str1.replace(/(<([^>]+)>)/gi, '');
+		str1 = str1.replace(/[^\w]/gi, ' ');
+
+		return str1;
+	},
+
+	_compareInclusiveStrings: function(str1, str2, sys) {
+		if (!str1 || !str2)
+			return 0;
+
+		str1 = str1.trim();
+		str2 = str2.trim();
+
+		str1 = this._cleanStringForInclusiveCompare(str1);
+		var count = 0, brokenString1 = [], brokenString2 = [], i = 0, z = 0, weightedAvg = 0;
+		if (str1.indexOf(' ') > -1)
+			brokenString1 = str1.split(' ');
+		else
+			brokenString1 = [str1];
+
+		if (str2.indexOf(' ') > -1)
+			brokenString2 = str2.split(' ');
+		else
+			brokenString2 = [str2];
+
+		if (sys && sys == '0b48fd75474321009db4b5b08b9a71c2')
+			gs.info('Body length: ' + brokenString1.length);
+
+		for (i; i < brokenString1.length; i++) {
+			for (z = 0; z < brokenString2.length; z++) {
+				if (sys && sys == '0b48fd75474321009db4b5b08b9a71c2')
+					gs.info('Comparing Words: ' + brokenString1[i] + ' and ' + brokenString2[z]);
+
+				if (this._compareStrings(brokenString1[i], brokenString2[z]) > 75) {
+					gs.info('Comparison of ' + brokenString1[i] + ' and ' + brokenString2[z] + ' successful');
+					count++;
+				}
+			}
+		}
+
+		if (sys && sys == '0b48fd75474321009db4b5b08b9a71c2')
+			gs.info('Spam search yielded count: ' + count);
+
+		if (count > 0 && brokenString1.length > 0)
+			weightedAvg = Math.ceil((count/brokenString1.length)*100);
+
+		if (sys && sys == '0b48fd75474321009db4b5b08b9a71c2')
+			gs.info('Spam search yielded: ' + weightedAvg);
+
+		//return (weightedAvg > 100) ? 100 : weightedAvg;
+
+		return count;
+	},
+
+	loadMyPastSearches: function(historySys, userSys) {
+		if (!historySys)
+			historySys = this.getSearchHistory();
+
+		if (!historySys || !userSys)
+			return [];
+
+		var grSearchHistoryEntry = new GlideRecord(this._pastSearchEntryTable), pastSearchArr = [];
+		grSearchHistoryEntry.addQuery('search_history', historySys);
+		grSearchHistoryEntry.addEncodedQuery('selected_by_usersLIKE' + userSys);
+		grSearchHistoryEntry.query();
+
+		while (grSearchHistoryEntry.next()) {
+			pastSearchArr.push({'name': grSearchHistoryEntry.target.getDisplayValue(), 'value': grSearchHistoryEntry.matched_value.toString(), 'sys_id': grSearchHistoryEntry.target.toString(), 'match': grSearchHistoryEntry.result.toString()});
+		}
+
+		return pastSearchArr;
+	},
+
+	loadPastSearches: function(historySys) {
+		if (!historySys)
+			historySys = this.getSearchHistory();
+
+		if (!historySys)
+			return [];
+
+		var grSearchHistoryEntry = new GlideRecord(this._pastSearchEntryTable);
+		grSearchHistoryEntry.addQuery('search_history', historySys);
+		grSearchHistoryEntry.query();
+
+		while (grSearchHistoryEntry.next()) {
+			this._searchMatchObject.push({'name': grSearchHistoryEntry.target.getDisplayValue(), 'value': grSearchHistoryEntry.matched_value.toString(), 'sys_id': grSearchHistoryEntry.target.toString(), 'match': parseFloat(grSearchHistoryEntry.result.toString())});
+		}
+
+		this._searchMatchObject.sort(this._sortMatchOb);
+
+		return this._searchMatchObject;
+	},
+
+	loadPastSearchesForDepartment: function(historySys, deptSys) {
+		if (!historySys)
+			historySys = this.getSearchHistory();
+
+		if (!historySys)
+			return [];
+
+		if (!deptSys) {
+			deptSys = this._getDeptForUser(gs.getUserID());
+			if (!deptSys)
+				return [];
+		}
+
+		var grSearchHistoryEntry = new GlideRecord(this._pastSearchEntryTable), pastSearchArr = [];
+		grSearchHistoryEntry.addQuery('search_history', historySys);
+		grSearchHistoryEntry.addQuery('selected_by_departments', 'LIKE', deptSys);
+		grSearchHistoryEntry.query();
+
+		while (grSearchHistoryEntry.next()) {
+			pastSearchArr.push({'name': grSearchHistoryEntry.target.getDisplayValue(), 'value': grSearchHistoryEntry.matched_value.toString(), 'sys_id': grSearchHistoryEntry.target.toString(), 'match': grSearchHistoryEntry.result.toString()});
+		}
+
+		return pastSearchArr;
+	},
+
+	_getDeptForUser: function(userSys) {
+		if (!userSys)
+			return '';
+
+		var grUser = new GlideRecord('sys_user');
+		if (grUser.get(userSys))
+			return grUser.department.toString();
+
+		return '';
+	},
+
+	markSelected: function(searchText, searchOb, historySys, userSys, deptSys) {
+		if (!searchText || !searchOb || !historySys || !userSys)
+			return false;
+
+		if (!deptSys) {
+			deptSys = this._getDeptForUser(userSys);
+		}
+
+		var grSearchHistoryEntry = new GlideRecord(this._pastSearchEntryTable), users = [], depts = [];
+		grSearchHistoryEntry.addQuery('search_history', historySys);
+		grSearchHistoryEntry.addQuery('target', searchOb.sys_id);
+		grSearchHistoryEntry.query();
+
+		if (grSearchHistoryEntry.next()) {
+			grSearchHistoryEntry.selected = 'true';
+			users = grSearchHistoryEntry.selected_by_users.toString().split(',');
+			if (users.indexOf(userSys) == -1)
+				users.push(userSys);
+
+			grSearchHistoryEntry.selected_by_users = users.join(',');
+
+			depts = grSearchHistoryEntry.selected_by_departments.toString().split(',');
+			if (deptSys && depts.indexOf(deptSys) == -1)
+				depts.push(deptSys);
+
+			grSearchHistoryEntry.selected_by_departments = depts.join(',');
+
+			return grSearchHistoryEntry.update();
+		}
+
+		return false;
+	},
+
+	getSearchHistory: function() {
+		return this._searchHistory || '';
+	},
+
+	_insertIntoPastSearches: function(searchOb, searchString) {
+		if (!searchOb || !searchString)
+			return false;
+
+		var grSearchHistory = new GlideRecord(this._pastSearchTable), grSearchHistoryEntry = new GlideRecord(this._pastSearchEntryTable), hisSys = '';
+		grSearchHistory.initialize();
+		grSearchHistory.searched_string = searchString;
+		grSearchHistory.search_config = this._searchConfig;
+		this._searchHistory = hisSys = grSearchHistory.insert();
+		if (hisSys) {
+			for (var i = 0; i < searchOb.length; i++) {
+				grSearchHistoryEntry.initialize();
+				grSearchHistoryEntry.search_history = hisSys;
+				grSearchHistoryEntry.matched_value = searchOb[i].value;
+				grSearchHistoryEntry.target = searchOb[i].sys_id;
+				grSearchHistoryEntry.result = searchOb[i].match.toFixed(2);
+				grSearchHistoryEntry.insert();
+			}
+		}
+	},
+
+	loadSearch: function() {
+		try {
+			if (!this._table || !this._field)
+				return '';
+
+			if (!this._minimumMatchPercent || this._minimumMatchPercent <= 0) {
+				if (minimumMatchRating)
+					this._minimumMatchPercent = minimumMatchRating;
+				else
+					return '';
+			}
+
+			if (!this._searchMatchObject)
+				this._searchMatchObject = []; // [{'name': name, 'match': match], {..}, ..]
+
+			var grSearchTable = new GlideRecord(this._table);
+
+			if (this._filter)
+				grSearchTable.addEncodedQuery(this._filter);
+
+			grSearchTable.query();
+
+			while (grSearchTable.next())
+				if (this._shouldCheckRow(grSearchTable, this._field))
+					this._searchMatchObject.push({'name': grSearchTable[this._field].getDisplayValue(), 'sys_id': grSearchTable.sys_id.toString(), 'match': 0});
+
+			return this._searchMatchObject;
+		}
+		catch(err) {
+			gs.info('Error logged in loadSearch: \n\n' + err);
+		}
+	},
+
+	_sortMatchOb: function(a, b) {
+		if (a.match < b.match)
+			return 1;
+
+		if (a.match > b.match)
+			return -1;
+
+		return 0;
+	},
+
+	_compareStrings: function(strOne, strTwo, stop) {
+		if (!strOne || !strTwo)
+			return 0;
+
+		try {
+			/*
+			First find all exact character matches
+			Then, find all near character matches [value will be deducted based on number of characters seperating match]
+				If the miss is a neighboring key on keyboard, less value should be deducted
+				If the miss is a puncuation character, disregard. Not including spaces
+			For length differences, deduct a multiplier of the length difference. These are harder to mess up and should be penalized.
+
+			Total score is out of 100;
+		*/
+
+			var matchingIndexArr = [], missedIndexArr = [], index = 0, longestLen = 0, lengthDiff = 0, comparatorChar, comparatorIndexDiff = 0, totalMatch = 100, additionalMatches = [];
+			strOne     = strOne.toLowerCase();
+			strTwo     = strTwo.toLowerCase();
+			strOne     = strOne.replace(/[^\w\s]/g, '');
+			strTwo     = strTwo.replace(/[^\w\s]/g, '');
+			strOne     = strOne.replace(/\sand\s/g, '').replace(/\sor\s/g, '');
+			strTwo     = strTwo.replace(/\sand\s/g, '').replace(/\sor\s/g, '');
+			strOne     = strOne.replace(/\s+/g, ' ');
+			strTwo     = strTwo.replace(/\s+/g, ' ');
+
+			if (this._blacklistedWords) {
+				for (var x in this._blacklistedWords) {
+					strOne     = strOne.replace(' ' + this._blacklistedWords[x] + ' ', '');
+					strTwo     = strTwo.replace(' ' + this._blacklistedWords[x] + ' ', '');
+
+					strOne     = strOne.replace(this._blacklistedWords[x] + ' ', '');
+					strTwo     = strTwo.replace(this._blacklistedWords[x] + ' ', '');
+
+					strOne     = strOne.replace(' ' + this._blacklistedWords[x], '');
+					strTwo     = strTwo.replace(' ' + this._blacklistedWords[x], '');
+				}
+			}
+
+			strOne     = strOne.trim();
+			strTwo     = strTwo.trim();
+
+			longestLen = (strOne.length > strTwo.length) ? strOne.length : strTwo.length;
+			lengthDiff = (strOne.length > strTwo.length) ? (strOne.length - strTwo.length) : (strTwo.length - strOne.length);
+
+			if (longestLen <= 0)
+				return 0;
+
+			for (index; index < longestLen; index++) {
+				if (strOne[index] == strTwo[index])
+					matchingIndexArr.push(index);
+				else
+					missedIndexArr.push(index);
+			}
+
+			//gs.info(strOne + ' matching indexes: ' + matchingIndexArr.join(', '));
+			if (strOne == this._debugSearchString)
+				gs.info(strOne + ' missed indexes: ' + missedIndexArr.join(', '));
+
+			if (strOne == this._debugSearchString)
+				gs.info('Length Diff between ' + strOne + ' and ' + strTwo + ' is ' + lengthDiff);
+
+			index = 0;
+			for (index; index < missedIndexArr.length; index++) {
+				comparatorIndexDiff = 0;
+
+				if (strOne == this._debugSearchString) {
+					gs.info('Checking index of ' + strTwo + ': ' + missedIndexArr[index]);
+				}
+				comparatorChar = strTwo[missedIndexArr[index]];
+				if (!comparatorChar || !strOne[missedIndexArr[index]]) // length mismatches are punished later
+					continue;
+
+				if (strOne[missedIndexArr[index+1]] == comparatorChar || strOne[missedIndexArr[index-1]] == comparatorChar)
+					comparatorIndexDiff = 1;
+				else if (strOne[missedIndexArr[index+2]] == comparatorChar || strOne[missedIndexArr[index-2]] == comparatorChar)
+					comparatorIndexDiff = 2;
+				else if (strOne[missedIndexArr[index+3]] == comparatorChar || strOne[missedIndexArr[index-3]] == comparatorChar)
+					comparatorIndexDiff = 3;
+				else
+					comparatorIndexDiff = 4;
+
+				if (strOne == this._debugSearchString) {
+					gs.info('ComparatorIndexDiff for ' + comparatorChar + ' is ' + comparatorIndexDiff);
+				}
+
+				comparatorIndexDiff = comparatorIndexDiff / 4;
+
+				if (this._isNeighboringKey(comparatorChar, strOne[missedIndexArr[index]])) {
+					if (strOne == this._debugSearchString) {
+						gs.info('Neighboring Key was true for ' + comparatorChar + ' and ' + strOne[missedIndexArr[index]]);
+					}
+
+					comparatorIndexDiff = comparatorIndexDiff / 2; // partial credit for misskeyed entries
+				}
+
+				if (strOne == this._debugSearchString)
+					gs.info('Deducting ' + this._comparatorPenalty*comparatorIndexDiff + ' from total in comparator loop');
+
+				totalMatch -= this._comparatorPenalty*comparatorIndexDiff;
+			}
+
+			//totalMatch -= this._lengthPenalty*lengthDiff;
+			if (strOne == this._debugSearchString)
+				gs.info('Total Match after comparator pass: ' + totalMatch);
+
+			if (this._lengthPenalty) {
+				totalMatch -= this._lengthPenalty*(lengthDiff/longestLen);
+				if (totalMatch < 0)
+					totalMatch = 0;
+			}
+
+			if (strOne == this._debugSearchString)
+				gs.info('Total Match after length pass: ' + totalMatch);
+
+			if (!stop && totalMatch >= this._minBeforeAdditionalPasses && totalMatch < 100) {
+				//if (!stop) {
+				if (strOne == this._debugSearchString)
+					gs.info('Starting Additional Matching for ' + strOne + ' because it had a match of: ' + totalMatch);
+
+				additionalMatches[0] = this._compareStrings(strOne.replace(/\s/g, ''), strTwo.replace(/\s/g, ''), true);
+				if (additionalMatches[0] > totalMatch)
+					totalMatch = additionalMatches[0];
+
+				if (strOne == this._debugSearchString)
+					gs.info('Additional Matching for space removal for ' + strOne + ' is: ' + additionalMatches[0]);
+
+				if (totalMatch < 100) {
+					additionalMatches[1] = this._compareStringsWithCommonSuffixes(strOne, strTwo);
+					if (additionalMatches[1] > totalMatch)
+						totalMatch = additionalMatches[1];
+
+					if (strOne == this._debugSearchString)
+						gs.info('Additional Matching for common suffixes for ' + strOne + ' is: ' + additionalMatches[1]);
+				}
+
+				if (totalMatch < 100) {
+					additionalMatches[2] = this._compareBrokenByWords(strOne, strTwo);
+					if (additionalMatches[2] > totalMatch)
+						totalMatch = additionalMatches[2];
+
+					if (strOne == this._debugSearchString)
+						gs.info('Additional Matching for broken words for ' + strOne + ' is: ' + additionalMatches[2]);
+				}
+
+				if (totalMatch < 100) {
+					additionalMatches[3] = this._compareWithTrimmedConsequentChars(strOne, strTwo);
+					if (additionalMatches[3] > totalMatch)
+						totalMatch = additionalMatches[3];
+
+					if (strOne == this._debugSearchString)
+						gs.info('Additional Matching for repeated chars for ' + strOne + ' is: ' + additionalMatches[3]);
+				}
+
+				if (totalMatch < 100 && this._synonyms) {
+					additionalMatches[4] = this._iterateSynonmysAndCompare(strOne, strTwo);
+					if (additionalMatches[4] > totalMatch)
+						totalMatch = additionalMatches[4];
+
+					if (strOne == this._debugSearchString)
+						gs.info('Additional Matching for synonyms of ' + strTwo + ' is: ' + additionalMatches[4]);
+				}
+			}
+
+			if (totalMatch < 0)
+				return 0;
+			else
+				return totalMatch;
+		}
+		catch(ex) {
+			gs.info('Error logged in _compareStrings: \n\n' + ex);
+		}
+	},
+
+	_iterateSynonmysAndCompare: function(strOne, strTwo) {
+		if (!strOne || !this._synonyms)
+			return 0;
+
+		var bestMatch = 0, currentMatch = 0;
+		for (var i = 0; i < this._synonyms.length; i++) {
+			currentMatch = this._compareStrings(strOne, this._synonyms[i], true);
+			if (currentMatch > bestMatch)
+				bestMatch = currentMatch;
+		}
+		
+		return bestMatch;
+	},
+
+	_compareWithTrimmedConsequentChars: function(strOne, strTwo) {
+		if (!strOne || !strTwo)
+			return 0;
+
+		var indexOfRepeatedChars = 0, sStrOne = strOne.trim(), sStrTwo = strTwo.trim(), repeatedChar = '', lastIndexOfRepeater = 0;
+		indexOfRepeatedChars = sStrTwo.search(/([a-z\s\.\/,;])\1/i);
+		if (strOne == 'santa ana')
+			gs.info('First index of repeaters in ' + sStrTwo + ' is ' + indexOfRepeatedChars);
+
+		while (indexOfRepeatedChars > -1) {
+			repeatedChar = sStrTwo[indexOfRepeatedChars];
+			lastIndexOfRepeater = indexOfRepeatedChars;
+			for (lastIndexOfRepeater; lastIndexOfRepeater < sStrTwo.length; lastIndexOfRepeater++)
+				if (sStrTwo[lastIndexOfRepeater] != repeatedChar)
+					break;
+
+			sStrTwo = sStrTwo.substring(0, indexOfRepeatedChars) + repeatedChar + sStrTwo.substring(lastIndexOfRepeater, sStrTwo.length);
+			indexOfRepeatedChars = sStrTwo.search(/([a-z\s\.\/,;])\1/i);
+			if (strOne == 'santa ana')
+				gs.info('First index of repeaters in ' + sStrTwo + ' is ' + indexOfRepeatedChars);
+		}
+
+		return this._compareStrings(sStrOne, sStrTwo, true);
+	},
+
+	_compareBrokenByWords: function(strOne, strTwo) {
+		if (!strOne || !strTwo)
+			return 0;
+
+		var spaceSplitArrStrOne = [], spaceSplitArrStrTwo = [], iterations = 0, longestLength = 0, totalMatch = 0;
+		if (strOne.indexOf(' ') > -1)
+			spaceSplitArrStrOne = strOne.split(' ');
+		else
+			spaceSplitArrStrOne = [strOne];
+
+		if (strTwo.indexOf(' ') > -1)
+			spaceSplitArrStrTwo = strTwo.split(' ');
+		else
+			spaceSplitArrStrTwo = [strTwo];
+
+		longestLength = (spaceSplitArrStrOne.length > spaceSplitArrStrTwo.length) ? spaceSplitArrStrOne.length : spaceSplitArrStrTwo.length;
+
+		if (strOne == this._debugSearchString)
+			gs.info('Starting broken word comparison between ' + strOne + ' and ' + strTwo);
+
+		for (var i = 0; i < spaceSplitArrStrOne.length; i++) {
+			for (var z = 0; z < spaceSplitArrStrTwo.length; z++) {
+				if (!spaceSplitArrStrOne[i] || !spaceSplitArrStrTwo[z]) {
+					iterations++;
+				}
+				else {
+					totalMatch += this._compareStrings(spaceSplitArrStrOne[i], spaceSplitArrStrTwo[z], true);
+					if (strOne == this._debugSearchString)
+						gs.info('Got: ' + totalMatch + ' Comparing words: ' + spaceSplitArrStrOne[i] + ' and ' + spaceSplitArrStrTwo[i]);
+
+					iterations++;
+				}
+			}
+		}
+
+		if (totalMatch == 0)
+			return 0;
+		else
+			return totalMatch / iterations;
+	},
+
+	_compareStringsWithCommonSuffixes: function(strOne, strTwo) {
+		if (strOne == this._debugSearchString)
+			gs.info('starting suffix lookup for ' + strOne);
+
+		if (this._bothStringsShareCommonSuffix(strOne, strTwo))
+			return 0;
+
+		var sStrOne = strOne.replace(/\s/g, ''), sStrTwo = strTwo.replace(/\s/g, '');
+
+		var matches = [];
+		for (var i = 0; i < this._commonSuffixes.length; i++) {
+
+			if (sStrOne.indexOf(this._commonSuffixes[i]) == (sStrOne.length - this._commonSuffixes[i].length) && sStrTwo.indexOf(this._commonSuffixes[i]) != (sStrTwo.length - this._commonSuffixes[i].length)) {
+				if (strOne == this._debugSearchString)
+					gs.info('Compared string: ' + sStrOne + ' ended in common suffix ' + this._commonSuffixes[i]);
+				matches.push(this._compareStrings(sStrOne, sStrTwo + this._commonSuffixes[i], true));
+			}
+			else if(sStrOne.indexOf(this._commonSuffixes[i]) != (sStrOne.length - this._commonSuffixes[i].length) && sStrTwo.indexOf(this._commonSuffixes[i]) == (sStrTwo.length - this._commonSuffixes[i].length)) {
+				if (strOne == this._debugSearchString)
+					gs.info('Comparator string: ' + sStrTwo + ' ended in common suffix ' + this._commonSuffixes[i]);
+				matches.push(this._compareStrings(sStrOne + this._commonSuffixes[i], sStrTwo, true));
+			}
+		}
+
+		matches.sort();
+		return matches[0];
+	},
+
+	_bothStringsShareCommonSuffix: function(strOne, strTwo) {
+		for (var i = 0; i < this._commonSuffixes.length; i++)
+			if (strOne.indexOf(this._commonSuffixes[i]) == (strOne.length - this._commonSuffixes[i].length) && strTwo.indexOf(this._commonSuffixes[i]) == (strTwo.length - this._commonSuffixes[i].length))
+				return true;
+
+		return false;
+	},
+
+	_shouldCheckRow: function(grSearchRow, field) {
+		if (!grSearchRow)
+			return false;
+
+		if (!grSearchRow[field])
+			return false;
+
+		return true;
+	},
+
+	// TODO: Not perfect, need to flesh this out
+	_isNeighboringKey: function(charOne, charTwo) {
+		if (!charOne || !charTwo)
+			return false;
+
+		switch(charOne) {
+			case 'a':
+			case 's':
+			case 'q':
+			case 'z':
+				return !!~['a', 's', 'q', 'z'].indexOf(charTwo);
+			case 'd':
+			case 'w':
+			case 'x':
+				return !!~['s', 'd', 'w', 'x', 'a', 'e'].indexOf(charTwo);
+			case 'e':
+			case 'f':
+			case 'c':
+				return !!~['d', 'e', 'f', 'c', 's', 'w'].indexOf(charTwo);
+			case 'r':
+			case 'g':
+			case 'v':
+				return !!~['f', 'r', 'g', 'v', 'd'].indexOf(charTwo);
+			case 't':
+			case 'h':
+			case 'b':
+				return !!~['g', 't', 'h', 'b', 'f'].indexOf(charTwo);
+			case 'y':
+			case 'j':
+			case 'n':
+				return !!~['g', 'y', 'j', 'n', 'g'].indexOf(charTwo);
+			case 'u':
+			case 'k':
+			case 'm':
+				return !!~['j', 'u', 'k', 'm', 'h', 'l'].indexOf(charTwo);
+			case 'i':
+			case 'l':
+			case 'o':
+				return !!~['g', 'y', 'j', 'n', 'g', 'k'].indexOf(charTwo);
+			case 'p':
+				return !!~['o', 'l'].indexOf(charTwo);
+		}
+
+		return false;
+	},
+
+	type: 'CernaSearch'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-11 03:56:35</sys_created_on>
+        <sys_id>fb558aabdb180010ce90a455ca961926</sys_id>
+        <sys_mod_count>95</sys_mod_count>
+        <sys_name>CernaSearch</sys_name>
+        <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+        <sys_update_name>sys_script_include_fb558aabdb180010ce90a455ca961926</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-10-23 13:43:37</sys_updated_on>
+    </sys_script_include>
+</record_update>

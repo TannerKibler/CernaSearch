@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element label="Cerna Search History Entry" max_length="40" name="x_236565_cerna_sea_cerna_search_history_entry" type="collection">
+        <element label="Matched Value" max_length="400" name="matched_value" type="string"/>
+        <element label="Result" max_length="40" name="result" type="float"/>
+        <element label="Search History" max_length="32" name="search_history" reference="x_236565_cerna_sea_cerna_search_history" type="reference"/>
+        <element label="Selected" max_length="40" name="selected" type="boolean"/>
+        <element attributes="glide_list" label="Selected by Departments" max_length="4000" name="selected_by_departments" reference="cmn_department" type="glide_list"/>
+        <element label="Selected by Users" max_length="4000" name="selected_by_users" reference="sys_user" type="glide_list"/>
+        <element dependent="search_history.search_config.target_table" dependent_on_field="search_history.search_config.target_table" label="Target" max_length="32" name="target" type="document_id" use_dependent_field="true"/>
+        <index name="index">
+            <element name="search_history"/>
+        </index>
+        <index name="index2">
+            <element name="target"/>
+        </index>
+    </element>
+</database>

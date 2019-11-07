@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_documentation element="search_config" label="Search Config" language="en" table="x_236565_cerna_sea_cerna_search_history">
+        <sys_documentation action="INSERT_OR_UPDATE">
+            <element>search_config</element>
+            <help/>
+            <hint/>
+            <label>Search Config</label>
+            <language>en</language>
+            <name>x_236565_cerna_sea_cerna_search_history</name>
+            <plural>Search Configs</plural>
+            <sys_class_name>sys_documentation</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2019-10-11 05:05:48</sys_created_on>
+            <sys_id>8075966fdb580010ce90a455ca961956</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>Search Config</sys_name>
+            <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+            <sys_update_name>sys_documentation_x_236565_cerna_sea_cerna_search_history_search_config_en</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2019-10-11 05:05:48</sys_updated_on>
+            <url/>
+            <url_target/>
+        </sys_documentation>
+    </sys_documentation>
+</record_update>

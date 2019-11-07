@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="x_236565_cerna_sea_cerna_search_config">
+    <x_236565_cerna_sea_cerna_search_config action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <common_suffixes>inc</common_suffixes>
+        <comparator_penalty>20</comparator_penalty>
+        <display_character_limit/>
+        <filter table="core_company">vendor=true^EQ<item endquery="false" field="vendor" goto="false" newquery="false" operator="=" or="false" value="true"/>
+            <item endquery="true" field="" goto="false" newquery="false" operator="=" or="false" value=""/>
+        </filter>
+        <inclusive_search_fields/>
+        <length_penalty>100</length_penalty>
+        <match_field_override/>
+        <maximum_length_mismatch>2</maximum_length_mismatch>
+        <minimum_allowed_match>75</minimum_allowed_match>
+        <minimum_result_before_retry>0</minimum_result_before_retry>
+        <run_script>true</run_script>
+        <script/>
+        <search_fields>name,country,city</search_fields>
+        <synonym_match_ratio/>
+        <sys_class_name>x_236565_cerna_sea_cerna_search_config</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2019-10-11 04:39:55</sys_created_on>
+        <sys_id>b24f02e7db580010ce90a455ca961947</sys_id>
+        <sys_mod_count>13</sys_mod_count>
+        <sys_name>core_company</sys_name>
+        <sys_package display_value="Cerna Search" source="x_236565_cerna_sea">7825ca6bdb180010ce90a455ca96194d</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="Cerna Search">7825ca6bdb180010ce90a455ca96194d</sys_scope>
+        <sys_update_name>x_236565_cerna_sea_cerna_search_config_b24f02e7db580010ce90a455ca961947</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2019-10-23 13:44:38</sys_updated_on>
+        <target_table>core_company</target_table>
+    </x_236565_cerna_sea_cerna_search_config>
+</record_update>
